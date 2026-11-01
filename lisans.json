@@ -1,8 +1,8 @@
 {
-  "izinli": ["SENIN_KODUN", "BELEDIYE_KODU"],
+  "izinli": ["FA62A68C", "BELEDIYE_KODU"],
+  "bitis": { "BELEDIYE_KODU": "2027-03-31" },
   "kapali": [],
-  "bitis": {},
   "hepsiKapali": false,
-  "cevrimdisiGun": 14,
+  "cevrimdisiGun": 1,
   "mesaj": "Kullanım kapatıldı. Yetkiliye başvurun."
 }
