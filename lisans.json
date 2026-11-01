@@ -1,4 +1,5 @@
 {
+  "izinli": ["SENIN_KODUN", "BELEDIYE_KODU"],
   "kapali": [],
   "bitis": {},
   "hepsiKapali": false,
