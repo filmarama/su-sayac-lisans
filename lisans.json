@@ -3,11 +3,11 @@
     "FA62A68C"
   ],
   "kapali": [],
-  "bitis": {
-    "FA62A68C": "2026-11-01"
-  },
+  "bitis": {},
   "hepsiKapali": false,
   "cevrimdisiGun": 1,
   "mesaj": "Kullanım kapatıldı. Yetkiliye başvurun.",
-  "adlar": {}
+  "adlar": {
+    "FA62A68C": "Ben"
+  }
 }
