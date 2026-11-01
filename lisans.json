@@ -1,8 +1,11 @@
 {
-  "izinli": ["FA62A68C"],
+  "izinli": [
+    "FA62A68C"
+  ],
   "kapali": [],
   "bitis": {},
-  "hepsiKapali": false,
+  "hepsiKapali": true,
   "cevrimdisiGun": 1,
-  "mesaj": "Kullanım kapatıldı. Yetkiliye başvurun."
+  "mesaj": "Kullanım kapatıldı. Yetkiliye başvurun.",
+  "adlar": {}
 }
