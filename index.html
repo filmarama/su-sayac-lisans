@@ -28,12 +28,6 @@ button{font:inherit;border:0;border-radius:10px;padding:10px 14px;background:var
     <label>Cihaz adı (isteğe bağlı)</label><input type="text" id="na" placeholder="örn. Belediye telefonu">
     <div class="row"><button id="add">Ekle</button></div></div>
   <div class="card"><b>Genel</b>
-    <label>Telegram bot anahtarı (şifrelenip kaydedilir)</label><input type="password" id="tgt" autocomplete="off" placeholder="123456:ABC…">
-    <label>Telegram sohbet kimliği</label><input type="text" id="tgc" inputmode="numeric" placeholder="örn. 123456789">
-    <label>Parola (config.js içindeki tgParola ile aynı)</label><input type="password" id="tgp" autocomplete="off">
-    <div class="row"><button class="g" id="tgenc">Şifrele ve ekle</button><button class="r" id="tgdel">Bot bilgisini kaldır</button></div>
-    <p class="mu" id="tgst"></p>
-    <label class="sw"><input type="checkbox" id="sy"> Silmeden önce Telegram yedeği gönder (cihazda Telegram açıksa)</label>
     <label class="sw"><input type="checkbox" id="all"> Tüm cihazları kapat (acil durum)</label>
     <label>Kilit ekranı mesajı</label><input type="text" id="mes">
     <label>İnternetsiz çalışma süresi (gün)</label><input type="number" id="gun" min="1" max="90">
@@ -55,25 +49,12 @@ function render(){
   $('#devs').innerHTML=dev.length?dev.map((d,i)=>`<div class="dev"><div class="top"><span class="kod">${d.kod}</span><span class="pill ${d.acik?'ok':'bad'}">${d.acik?'açık':'kapalı'}</span></div>
   <div class="mu">${d.ad?esc(d.ad):'adsız'}</div>
   <label>Son kullanma tarihi (boş = süresiz)</label><input type="date" data-b="${i}" value="${d.bitis||''}">
-  <div class="row"><button class="g" data-c="${i}">Süresiz yap</button><button class="g" data-t="${i}">${d.acik?'Kapat':'Aç'}</button><button class="g" data-n="${i}">Adı değiştir</button><button class="g" data-y="${i}">Yedek aldır${d.yed?' ✓':''}</button><button class="r" data-w="${i}">Verileri sil${d.sil?' ✓':''}</button><button class="g" data-g="${i}">Telegram yedek${d.tg?' ✓':''}</button><button class="g" data-p="${i}">PIN sıfırla${d.pinSif?' ✓':''}</button><button class="r" data-d="${i}">Sil</button></div></div>`).join(''):'<p class="mu">Liste boş</p>';
+  <div class="row"><button class="g" data-c="${i}">Süresiz yap</button><button class="g" data-t="${i}">${d.acik?'Kapat':'Aç'}</button><button class="g" data-n="${i}">Adı değiştir</button><button class="g" data-g="${i}">Telegram yedek${d.tg?' ✓':''}</button><button class="g" data-p="${i}">PIN sıfırla${d.pinSif?' ✓':''}</button><button class="r" data-d="${i}">Sil</button></div></div>`).join(''):'<p class="mu">Liste boş</p>';
 }
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-let tgNew=null,tgDel=false;
-const b64=u=>btoa(String.fromCharCode(...u));
-async function tgEncrypt(tok,chat,pass){const te=new TextEncoder(),salt=crypto.getRandomValues(new Uint8Array(16)),iv=crypto.getRandomValues(new Uint8Array(12));
-  const base=await crypto.subtle.importKey('raw',te.encode(pass),'PBKDF2',false,['deriveKey']);
-  const key=await crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations:100000,hash:'SHA-256'},base,{name:'AES-GCM',length:256},false,['encrypt']);
-  const ct=new Uint8Array(await crypto.subtle.encrypt({name:'AES-GCM',iv},key,te.encode(JSON.stringify({t:tok,c:chat}))));
-  const out=new Uint8Array(28+ct.length);out.set(salt,0);out.set(iv,16);out.set(ct,28);return b64(out)}
-const tgStatus=()=>{$('#tgst').textContent=tgNew?'Yeni bot bilgisi şifrelendi. Kaydet\u2019e basınca yazılır.':tgDel?'Bot bilgisi kaldırılacak. Kaydet\u2019e bas.':(J&&J.telegramVeri?'✅ Şifreli bot bilgisi kayıtlı. Değiştirmek için yenisini yaz.':'Kayıtlı bot bilgisi yok.')};
-$('#tgenc').onclick=async()=>{const t=$('#tgt').value.trim(),c=$('#tgc').value.trim(),p=$('#tgp').value;if(!t||!c||p.length<6)return m('Anahtar, sohbet kimliği ve en az 6 karakterlik parola gerekli',1);
-  try{tgNew=await tgEncrypt(t,c,p);tgDel=false;$('#tgt').value=$('#tgc').value=$('#tgp').value='';tgStatus()}catch(e){m('Şifrelenemedi: '+e.message,1)}};
-$('#tgdel').onclick=()=>{tgNew=null;tgDel=true;tgStatus()};
 $('#devs').addEventListener('input',e=>{const i=e.target.dataset.b;if(i!=null)dev[i].bitis=e.target.value});
 $('#devs').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;const d=b.dataset;
-  if(d.y!=null){dev[d.y].yed=dev[d.y].yed?'':String(Date.now());m(dev[d.y].yed?'Yedek isteği işaretlendi. Kaydet; telefon bir sonraki kontrolde yedek alır (Telegram açıksa oraya da gönderir).':'Yedek isteği geri alındı')}
-  else if(d.w!=null){const x=dev[d.w];if(x.sil){x.sil='';m('Silme isteği geri alındı. Kaydedersen iptal olur.')}else{const c=prompt('Bu cihazdaki TÜM sayaç verisi, fotoğraf ve yedekler silinecek, geri dönüşü yok.\nOnaylamak için cihaz kodunu yaz: '+x.kod);if(c&&c.trim().toUpperCase()===x.kod){x.sil=String(Date.now());m('Silme işaretlendi. Kaydet; telefon internete bağlanınca siler.')}else m('Vazgeçildi',1)}}
-  else if(d.g!=null)dev[d.g].tg=!dev[d.g].tg;
+  if(d.g!=null)dev[d.g].tg=!dev[d.g].tg;
   else if(d.p!=null){dev[d.p].pinSif=dev[d.p].pinSif?'':String(Date.now());m(dev[d.p].pinSif?'PIN sıfırlama işaretlendi. Kaydet; telefon bir sonraki kontrolde PIN’i siler.':'PIN sıfırlama geri alındı')}
   else if(d.c!=null)dev[d.c].bitis='';
   else if(d.t!=null)dev[d.t].acik=!dev[d.t].acik;
@@ -90,16 +71,14 @@ $('#load').onclick=async()=>{
     else{const x=await r.json();SHA=x.sha;J=JSON.parse(dec(x.content));m('Yüklendi')}
     const iz=Array.isArray(J.izinli)?J.izinli.map(U):[],ka=(J.kapali||[]).map(U);
     const all=[...new Set([...iz,...ka,...Object.keys(J.bitis||{}).map(U)])];
-    dev=all.map(k=>({kod:k,ad:(J.adlar||{})[k]||'',bitis:(J.bitis||{})[k]||'',acik:!ka.includes(k),pinSif:(J.pinSifirla||{})[k]||'',yed:(J.yedekIste||{})[k]||'',sil:(J.sil||{})[k]||'',tg:(J.telegram||[]).map(U).includes(k)}));
-    $('#minv').value=J.minSurum||'';$('#duy').value=J.duyuru||'';$('#sy').checked=!!J.silYedek;$('#all').checked=!!J.hepsiKapali;$('#mes').value=J.mesaj||'Kullanım kapatıldı. Yetkiliye başvurun.';$('#gun').value=J.cevrimdisiGun||14;
-    $('#main').hidden=$('#bar').hidden=false;tgNew=null;tgDel=false;tgStatus();render();
+    dev=all.map(k=>({kod:k,ad:(J.adlar||{})[k]||'',bitis:(J.bitis||{})[k]||'',acik:!ka.includes(k),pinSif:(J.pinSifirla||{})[k]||'',tg:(J.telegram||[]).map(U).includes(k)}));
+    $('#minv').value=J.minSurum||'';$('#duy').value=J.duyuru||'';$('#all').checked=!!J.hepsiKapali;$('#mes').value=J.mesaj||'Kullanım kapatıldı. Yetkiliye başvurun.';$('#gun').value=J.cevrimdisiGun||14;
+    $('#main').hidden=$('#bar').hidden=false;render();
   }catch(e){m(e.message||'Bağlanılamadı',1)}};
 $('#save').onclick=async()=>{
   const o={...J};o.izinli=dev.map(d=>d.kod);o.kapali=dev.filter(d=>!d.acik).map(d=>d.kod);
   o.bitis={};dev.forEach(d=>{if(d.bitis)o.bitis[d.kod]=d.bitis});o.adlar={};dev.forEach(d=>{if(d.ad)o.adlar[d.kod]=d.ad});
   o.telegram=dev.filter(d=>d.tg).map(d=>d.kod);
-  if(tgNew)o.telegramVeri=tgNew;else if(tgDel)delete o.telegramVeri;
-  o.yedekIste={};dev.forEach(d=>{if(d.yed)o.yedekIste[d.kod]=d.yed});o.sil={};dev.forEach(d=>{if(d.sil)o.sil[d.kod]=d.sil});o.silYedek=$('#sy').checked;
   o.pinSifirla={};dev.forEach(d=>{if(d.pinSif)o.pinSifirla[d.kod]=d.pinSif});
   const mv=Math.floor(+$('#minv').value||0);if(mv>0)o.minSurum=mv;else delete o.minSurum;
   const du=$('#duy').value.trim();if(du){if(du!==(J.duyuru||''))o.duyuruId=String(Date.now());o.duyuru=du}else{delete o.duyuru;delete o.duyuruId}
@@ -108,7 +87,7 @@ $('#save').onclick=async()=>{
   m('Kaydediliyor…');
   try{const body={message:'lisans guncelle (panel)',content:enc(JSON.stringify(o,null,2)+'\n')};if(SHA)body.sha=SHA;
     const r=await api('PUT',body);if(!r.ok)throw new Error(r.status===409||r.status===422?'Dosya başka yerde değişmiş, “Bağlan ve yükle”ye basıp tekrar dene':'Kaydedilemedi ('+r.status+')');
-    const x=await r.json();SHA=x.content.sha;J=o;tgNew=null;tgDel=false;tgStatus();m('✅ Kaydedildi. Telefonlar birkaç dakikada görür.')}catch(e){m(e.message,1)}};
+    const x=await r.json();SHA=x.content.sha;J=o;m('✅ Kaydedildi. Telefonlar birkaç dakikada görür.')}catch(e){m(e.message,1)}};
 $('#forget').onclick=()=>{LS.s('tok','');$('#tok').value='';m('Anahtar silindi')};
 if(LS.g('tok'))$('#load').click();
 </script></body></html>
