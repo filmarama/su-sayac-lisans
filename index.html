@@ -47,12 +47,13 @@ function render(){
   $('#devs').innerHTML=dev.length?dev.map((d,i)=>`<div class="dev"><div class="top"><span class="kod">${d.kod}</span><span class="pill ${d.acik?'ok':'bad'}">${d.acik?'açık':'kapalı'}</span></div>
   <div class="mu">${d.ad?esc(d.ad):'adsız'}</div>
   <label>Son kullanma tarihi (boş = süresiz)</label><input type="date" data-b="${i}" value="${d.bitis||''}">
-  <div class="row"><button class="g" data-t="${i}">${d.acik?'Kapat':'Aç'}</button><button class="g" data-n="${i}">Adı değiştir</button><button class="r" data-d="${i}">Sil</button></div></div>`).join(''):'<p class="mu">Liste boş</p>';
+  <div class="row"><button class="g" data-c="${i}">Süresiz yap</button><button class="g" data-t="${i}">${d.acik?'Kapat':'Aç'}</button><button class="g" data-n="${i}">Adı değiştir</button><button class="r" data-d="${i}">Sil</button></div></div>`).join(''):'<p class="mu">Liste boş</p>';
 }
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 $('#devs').addEventListener('input',e=>{const i=e.target.dataset.b;if(i!=null)dev[i].bitis=e.target.value});
 $('#devs').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;const d=b.dataset;
-  if(d.t!=null)dev[d.t].acik=!dev[d.t].acik;
+  if(d.c!=null)dev[d.c].bitis='';
+  else if(d.t!=null)dev[d.t].acik=!dev[d.t].acik;
   else if(d.n!=null){const v=prompt('Cihaz adı',dev[d.n].ad||'');if(v!=null)dev[d.n].ad=v.trim()}
   else if(d.d!=null){if(!confirm(dev[d.d].kod+' silinsin mi? Silinen cihaz kilitlenir.'))return;dev.splice(d.d,1)}
   render()});
