@@ -8,7 +8,9 @@
   "hepsiKapali": false,
   "cevrimdisiGun": 1,
   "mesaj": "Kullanım kapatıldı. Yetkiliye başvurun.",
-  "adlar": {},
+  "adlar": {
+    "FA62A68C": "Admin"
+  },
   "telegram": [
     "FA62A68C"
   ],
