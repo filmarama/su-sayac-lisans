@@ -33,6 +33,17 @@ button{font:inherit;border:0;border-radius:10px;padding:10px 14px;background:var
     <label>İnternetsiz çalışma süresi (gün)</label><input type="number" id="gun" min="1" max="90">
     <label>En düşük uygulama sürümü (örn. 43, boş = zorlama yok)</label><input type="number" id="minv" min="0">
     <label>Duyuru (telefonlarda bir kez gösterilir, boş = yok)</label><input type="text" id="duy" maxlength="400" placeholder="örn. Yarın okuma 08:00'de başlıyor"></div>
+  <div class="card"><b>Uygulama güncellemesi</b><p class="mu" style="margin:2px 0 0">Telefonlarda “Yeni sürüm var, indir” penceresi çıkar. APK’yı Termux’ta <code>python3 tools/lisans.py apk DOSYA.apk</code> ile yüklersen bu alan kendiliğinden dolar.</p>
+    <label>Yeni sürüm numarası (örn. 51, boş = bildirim yok)</label><input type="number" id="gs" min="0">
+    <label>Not (isteğe bağlı)</label><input type="text" id="gn" maxlength="250" placeholder="örn. Rota özeti eklendi">
+    <label>İndirme adresi (boş = otomatik GitHub sürüm adresi)</label><input type="text" id="gu" placeholder="https://…"></div>
+  <div class="card"><b>Sayaç listesi gönder</b><p class="mu" style="margin:2px 0 0">Liste parolayla şifrelenip yüklenir (repo herkese açık, liste okunamaz). Telefonlar listeyi alıp “birleştir / değiştir” diye sorar. Parolayı telefona bir kez yazarlar.</p>
+    <div id="lst" class="mu"></div>
+    <label>Liste dosyası (uygulamadan dışa aktarılan .json)</label><input type="file" id="lf" accept=".json,.geojson,application/json">
+    <label>Parola (en az 6 karakter)</label><input type="password" id="lpw" autocomplete="off">
+    <label>Not (isteğe bağlı)</label><input type="text" id="ln" maxlength="150" placeholder="örn. Kasım dönemi listesi">
+    <label>Hedef cihazlar</label><div id="lhedef" class="mu"></div>
+    <div class="row"><button id="lsend">Şifrele ve gönder</button><button class="r" id="lclr">Gönderilen listeyi geri çek</button></div></div>
 </div>
 <div class="bar" id="bar" hidden><button id="save">GitHub'a kaydet</button></div>
 <script>
@@ -42,7 +53,7 @@ const m=(t,bad)=>{$('#msg').textContent=t;$('#msg').style.color=bad?'var(--bad)'
 $('#own').value=LS.g('own')||(location.hostname.endsWith('.github.io')?location.hostname.split('.')[0]:'filmarama');
 $('#rep').value=LS.g('rep')||(location.hostname.endsWith('.github.io')&&location.pathname.split('/')[1]||'su-sayac-lisans');
 $('#tok').value=LS.g('tok');
-const api=(m_,body)=>fetch(`https://api.github.com/repos/${$('#own').value.trim()}/${$('#rep').value.trim()}/contents/lisans.json`,{method:m_||'GET',headers:{Authorization:'Bearer '+$('#tok').value.trim(),Accept:'application/vnd.github+json'},body:body&&JSON.stringify(body),cache:'no-store'});
+const api=(m_,body,path)=>fetch(`https://api.github.com/repos/${$('#own').value.trim()}/${$('#rep').value.trim()}/contents/${path||'lisans.json'}`,{method:m_||'GET',headers:{Authorization:'Bearer '+$('#tok').value.trim(),Accept:'application/vnd.github+json'},body:body&&JSON.stringify(body),cache:'no-store'});
 const dec=b=>decodeURIComponent(escape(atob(b.replace(/\s/g,''))));const enc=t=>btoa(unescape(encodeURIComponent(t)));
 const U=s=>String(s).trim().toUpperCase();
 function render(){
@@ -51,6 +62,9 @@ function render(){
   <label>Son kullanma tarihi (boş = süresiz)</label><input type="date" data-b="${i}" value="${d.bitis||''}">
   <div class="row"><button class="g" data-c="${i}">Süresiz yap</button><button class="g" data-t="${i}">${d.acik?'Kapat':'Aç'}</button><button class="g" data-n="${i}">Adı değiştir</button><button class="r" data-w="${i}">Verileri sil${d.sil?' ✓':''}</button><button class="g" data-g="${i}">Telegram yedek${d.tg?' ✓':''}</button><button class="g" data-p="${i}">PIN sıfırla${d.pinSif?' ✓':''}</button><button class="r" data-d="${i}">Sil</button></div></div>`).join(''):'<p class="mu">Liste boş</p>';
 }
+function renderL(){
+  $('#lhedef').innerHTML=dev.length?dev.map((d,i)=>`<label class="sw" style="margin:2px 0"><input type="checkbox" data-h="${d.kod}" checked> ${d.kod}${d.ad?' · '+esc(d.ad):''}</label>`).join(''):'Önce cihaz ekle';
+  const g=J&&J.liste;$('#lst').textContent=g?`Gönderilmiş liste: ${new Date(+g.id).toLocaleString('tr-TR')}${g.n?' · '+g.n+' kayıt':''}${g.not?' · '+g.not:''}${g.hedef&&g.hedef.length?' · '+g.hedef.join(', '):' · tüm cihazlar'}`:'Şu an gönderilmiş liste yok.'}
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 $('#devs').addEventListener('input',e=>{const i=e.target.dataset.b;if(i!=null)dev[i].bitis=e.target.value});
 $('#devs').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;const d=b.dataset;
@@ -61,9 +75,9 @@ $('#devs').addEventListener('click',e=>{const b=e.target.closest('button');if(!b
   else if(d.t!=null)dev[d.t].acik=!dev[d.t].acik;
   else if(d.n!=null){const v=prompt('Cihaz adı',dev[d.n].ad||'');if(v!=null)dev[d.n].ad=v.trim()}
   else if(d.d!=null){if(!confirm(dev[d.d].kod+' silinsin mi? Silinen cihaz kilitlenir.'))return;dev.splice(d.d,1)}
-  render()});
+  render();renderL()});
 $('#add').onclick=()=>{const k=U($('#nk').value);if(!/^[0-9A-Z]{4,16}$/.test(k))return m('Kod harf ve rakamdan oluşmalı',1);if(dev.some(d=>d.kod===k))return m('Bu kod zaten listede',1);
-  dev.push({kod:k,ad:$('#na').value.trim(),bitis:'',acik:true});$('#nk').value='';$('#na').value='';m('Eklendi. Kaydetmeyi unutma.');render()};
+  dev.push({kod:k,ad:$('#na').value.trim(),bitis:'',acik:true});$('#nk').value='';$('#na').value='';m('Eklendi. Kaydetmeyi unutma.');render();renderL()};
 $('#load').onclick=async()=>{
   LS.s('own',$('#own').value.trim());LS.s('rep',$('#rep').value.trim());LS.s('tok',$('#tok').value.trim());m('Yükleniyor…');
   try{const r=await api();
@@ -74,9 +88,10 @@ $('#load').onclick=async()=>{
     const all=[...new Set([...iz,...ka,...Object.keys(J.bitis||{}).map(U)])];
     dev=all.map(k=>({kod:k,ad:(J.adlar||{})[k]||'',bitis:(J.bitis||{})[k]||'',acik:!ka.includes(k),pinSif:(J.pinSifirla||{})[k]||'',sil:(J.sil||{})[k]||'',tg:(J.telegram||[]).map(U).includes(k)}));
     $('#minv').value=J.minSurum||'';$('#duy').value=J.duyuru||'';$('#all').checked=!!J.hepsiKapali;$('#mes').value=J.mesaj||'Kullanım kapatıldı. Yetkiliye başvurun.';$('#gun').value=J.cevrimdisiGun||14;
-    $('#main').hidden=$('#bar').hidden=false;render();
+    const gg=J.guncelle||{};$('#gs').value=gg.surum||'';$('#gn').value=gg.not||'';$('#gu').value=gg.url||'';
+    $('#main').hidden=$('#bar').hidden=false;render();renderL();
   }catch(e){m(e.message||'Bağlanılamadı',1)}};
-$('#save').onclick=async()=>{
+async function save(extra){
   const o={...J};o.izinli=dev.map(d=>d.kod);o.kapali=dev.filter(d=>!d.acik).map(d=>d.kod);
   o.bitis={};dev.forEach(d=>{if(d.bitis)o.bitis[d.kod]=d.bitis});o.adlar={};dev.forEach(d=>{if(d.ad)o.adlar[d.kod]=d.ad});
   o.telegram=dev.filter(d=>d.tg).map(d=>d.kod);
@@ -84,12 +99,35 @@ $('#save').onclick=async()=>{
   o.pinSifirla={};dev.forEach(d=>{if(d.pinSif)o.pinSifirla[d.kod]=d.pinSif});
   const mv=Math.floor(+$('#minv').value||0);if(mv>0)o.minSurum=mv;else delete o.minSurum;
   const du=$('#duy').value.trim();if(du){if(du!==(J.duyuru||''))o.duyuruId=String(Date.now());o.duyuru=du}else{delete o.duyuru;delete o.duyuruId}
+  const gs=Math.floor(+$('#gs').value||0);if(gs>0){o.guncelle={surum:gs};const gn=$('#gn').value.trim(),gu=$('#gu').value.trim();if(gn)o.guncelle.not=gn;if(/^https:\/\//.test(gu))o.guncelle.url=gu}else delete o.guncelle;
+  if(extra)extra(o);
   o.hepsiKapali=$('#all').checked;o.mesaj=$('#mes').value.trim();o.cevrimdisiGun=Math.max(1,+$('#gun').value||14);
-  if(!dev.some(d=>d.acik)&&!confirm('Hiçbir cihaz açık değil, herkes kilitlenecek. Devam?'))return;
+  if(!dev.some(d=>d.acik)&&!confirm('Hiçbir cihaz açık değil, herkes kilitlenecek. Devam?'))return false;
   m('Kaydediliyor…');
   try{const body={message:'lisans guncelle (panel)',content:enc(JSON.stringify(o,null,2)+'\n')};if(SHA)body.sha=SHA;
     const r=await api('PUT',body);if(!r.ok)throw new Error(r.status===409||r.status===422?'Dosya başka yerde değişmiş, “Bağlan ve yükle”ye basıp tekrar dene':'Kaydedilemedi ('+r.status+')');
-    const x=await r.json();SHA=x.content.sha;J=o;m('✅ Kaydedildi. Telefonlar birkaç dakikada görür.')}catch(e){m(e.message,1)}};
+    const x=await r.json();SHA=x.content.sha;J=o;m('✅ Kaydedildi. Telefonlar birkaç dakikada görür.');renderL();return true}catch(e){m(e.message,1);return false}}
+$('#save').onclick=()=>save();
+const b64u=u=>{let s='';for(let i=0;i<u.length;i+=0x8000)s+=String.fromCharCode.apply(null,u.subarray(i,i+0x8000));return btoa(s)};
+$('#lsend').onclick=async()=>{
+  const f=$('#lf').files[0],pw=$('#lpw').value;if(!f)return m('Liste dosyasını seç',1);if(pw.length<6)return m('Parola en az 6 karakter olmalı',1);
+  let text,n=0;try{text=await f.text();const q=JSON.parse(text);n=Array.isArray(q)?q.length:(q.features||[]).length}catch{return m('Dosya geçerli bir JSON değil',1)}
+  m('Şifreleniyor…');
+  try{let by=new TextEncoder().encode(text),z=0;
+    if(window.CompressionStream){by=new Uint8Array(await new Response(new Blob([by]).stream().pipeThrough(new CompressionStream('gzip'))).arrayBuffer());z=1}
+    const salt=crypto.getRandomValues(new Uint8Array(16)),iv=crypto.getRandomValues(new Uint8Array(12));
+    const k0=await crypto.subtle.importKey('raw',new TextEncoder().encode(pw),'PBKDF2',false,['deriveKey']);
+    const key=await crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations:150000,hash:'SHA-256'},k0,{name:'AES-GCM',length:256},false,['encrypt']);
+    const ct=new Uint8Array(await crypto.subtle.encrypt({name:'AES-GCM',iv},key,by));
+    const env=JSON.stringify({f:1,s:b64u(salt),i:150000,v:b64u(iv),c:b64u(ct),z});
+    m('Yükleniyor…');let sha=null;const g=await api('GET',null,'liste.enc');if(g.ok)sha=(await g.json()).sha;
+    const body={message:'liste (panel)',content:btoa(env)};if(sha)body.sha=sha;
+    const r=await api('PUT',body,'liste.enc');if(!r.ok)throw new Error('Liste yüklenemedi ('+r.status+')');
+    const hed=[...document.querySelectorAll('[data-h]')].filter(x=>x.checked).map(x=>x.dataset.h);
+    const ok=await save(o=>{o.liste={id:String(Date.now()),dosya:'liste.enc',n,hedef:hed.length===dev.length?[]:hed};const nt=$('#ln').value.trim();if(nt)o.liste.not=nt});
+    if(ok){m('✅ Liste gönderildi ('+n+' kayıt). Telefonlar birkaç dakikada görür.');$('#lpw').value='';$('#lf').value=''}
+  }catch(e){m(e.message,1)}};
+$('#lclr').onclick=async()=>{if(!J||!J.liste)return m('Gönderilmiş liste yok');if(!confirm('Gönderilen liste geri çekilsin mi? Telefonlar artık görmez.'))return;if(await save(o=>{delete o.liste}))m('Liste geri çekildi')};
 $('#forget').onclick=()=>{LS.s('tok','');$('#tok').value='';m('Anahtar silindi')};
 if(LS.g('tok'))$('#load').click();
 </script></body></html>
